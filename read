@@ -1,0 +1,72 @@
+python
+
+# models.py
+from django.db import models
+from django.contrib.auth.models import User
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    bio = models.TextField(blank=True)
+    avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
+
+class Message(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    content = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    # Additional fields for media files, e.g., FileField for attachments
+
+# forms.py
+from django import forms
+from .models import Message
+
+class MessageForm(forms.ModelForm):
+    class Meta:
+        model = Message
+        fields = ['content']
+
+# views.py
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from .models import Message
+from .forms import MessageForm
+
+@login_required
+def chat_room(request):
+    messages = Message.objects.all()
+    form = MessageForm()
+
+    if request.method == 'POST':
+        form = MessageForm(request.POST)
+        if form.is_valid():
+            new_message = form.save(commit=False)
+            new_message.user = request.user
+            new_message.save()
+            return redirect('chat_room')
+
+    return render(request, 'chat/chat_room.html', {'messages': messages, 'form': form})
+-------------------------------------------------------------------------------------------------------------------------------
+html
+
+<!-- chat_room.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+  <div>
+    <h1>Chat Room</h1>
+    <div id="chat-messages">
+      {% for message in messages %}
+        <p>{{ message.user.username }}: {{ message.content }}</p>
+      {% endfor %}
+    </div>
+    <form method="post" action="{% url 'chat_room' %}">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit">Send</button>
+    </form>
+  </div>
+{% endblock %}
+
+
+----------------------------------------------------------------------------
+Please note that this code is intended to illustrate the project structure and does not include the implementation of WebSocket and real-time handling. 
+To create a fully functional real-time web chat with Django, you would need to add support for Django Channels and the corresponding WebSocket handling code.
